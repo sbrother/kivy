@@ -32,6 +32,7 @@ from kivy.graphics.vertex_instructions cimport Mesh, StripMesh
 from kivy.graphics.tesselator cimport Tesselator
 from kivy.graphics.texture cimport Texture
 from kivy.graphics.vertex cimport VertexFormat
+from kivy.graphics.context_instructions cimport Color
 from cpython cimport array
 from array import array
 from cython cimport view
@@ -490,6 +491,7 @@ cdef class Svg(RenderContext):
         list paths
         object transform
         object fill
+        object id
         public object current_color
         object stroke
         float opacity
@@ -652,6 +654,7 @@ cdef class Svg(RenderContext):
         self.opacity *= float(e.get('opacity', 1))
         fill_opacity = float(e.get('fill-opacity', 1))
         stroke_opacity = float(e.get('stroke-opacity', 1))
+        self.id = e.get('id')
 
         oldtransform = self.transform
         for t in self.parse_transform(e.get('transform')):
@@ -1065,7 +1068,8 @@ cdef class Svg(RenderContext):
             self.stroke,
             tris,
             self.fill,
-            self.transform))
+            self.transform,
+            self.id))
 
         self.path = []
 
@@ -1120,11 +1124,18 @@ cdef class Svg(RenderContext):
 
     cdef void push_strip_mesh(self, float *vertices, int vindex, int count,
             int mode=0):
-        if self.last_mesh:
-            if self.last_mesh.add_triangle_strip(vertices, vindex, count, mode):
-                return
-        self.last_mesh = StripMesh(fmt=VERTEX_FORMAT)
-        self.last_mesh.add_triangle_strip(vertices, vindex, count, mode)
+        # if self.last_mesh:
+        #     if self.last_mesh.add_triangle_strip(vertices, vindex, count, mode):
+        #         return
+        last_mesh = StripMesh(fmt=VERTEX_FORMAT)
+        last_mesh.add_triangle_strip(vertices, vindex, count, mode)
+        print "Adding a mesh!"
+        self.add(last_mesh)
+
+    cdef void push_color(self, int r, int g, int b, int a):
+        print "Adding color!"
+        self.add(Color(r, g, b, a))
+        
 
     cdef void push_line_mesh(self, float[:] path, fill, Matrix transform):
         # Tentative to use smooth line, doesn't work completly yet.
@@ -1133,7 +1144,7 @@ cdef class Svg(RenderContext):
         cdef float ax, ay, bx, _by, r = 0, g = 0, b = 0, a = 0
         cdef int count = len(path) / 2
         cdef float *vertices = NULL
-        cdef float width = 0.25
+        cdef float width = 0.05
         vindex = 0
 
         vertices = <float *>malloc(sizeof(float) * count * 32)
@@ -1207,9 +1218,11 @@ cdef class Svg(RenderContext):
         free(vertices)
 
     cdef void render(self):
-        for path, stroke, tris, fill, transform in self.paths:
+        for path, stroke, tris, fill, transform, id in self.paths:
+            if id is not None or True:                
+                self.push_color(255, 0, 0, 255)
             if tris:
                 for item in tris:
-                    self.push_mesh(item, fill, transform, 'triangle_strip')
+                    self.push_mesh(item, fill, transform, 'triangle_strip')                    
             if path:
                 self.push_line_mesh(path, stroke, transform)
