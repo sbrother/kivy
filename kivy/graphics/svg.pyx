@@ -1112,14 +1112,14 @@ cdef class Svg(RenderContext):
         self.last_mesh = StripMesh(fmt=VERTEX_FORMAT)
         self.last_mesh.add_triangle_strip(vertices, vindex, count, mode)
 
-    cdef void push_line_mesh(self, float[:] path, fill, Matrix transform):
+    cdef void push_line_mesh(self, float[:] path, fill, Matrix transform, 
+                             float width):
         # Tentative to use smooth line, doesn't work completly yet.
         # Caps and joint are missing
         cdef int index, vindex = 0, odd = 0, i
         cdef float ax, ay, bx, _by, r = 0, g = 0, b = 0, a = 0
         cdef int count = len(path) / 2
         cdef float *vertices = NULL
-        cdef float width = self.line_width
         vindex = 0
 
         vertices = <float *>malloc(sizeof(float) * count * 32)
@@ -1198,4 +1198,4 @@ cdef class Svg(RenderContext):
                 for item in tris:
                     self.push_mesh(item, fill, transform, 'triangle_strip')
             if path:
-                self.push_line_mesh(path, stroke, transform)
+                self.push_line_mesh(path, stroke, transform, self.line_width)
